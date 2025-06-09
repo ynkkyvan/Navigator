@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🧠 Analyse Navigator</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(120deg, #121212, #1f1f1f);
+      color: #f0f0f0;
+      padding: 2rem;
+      max-width: 600px;
+      margin: auto;
+    }
+    h1 {
+      text-align: center;
+      color: #00ffc3;
+    }
+    input, button {
+      padding: 0.6rem;
+      border-radius: 8px;
+      border: none;
+      margin: 0.3rem 0;
+    }
+    input {
+      width: calc(100% - 1.2rem);
+      font-size: 1rem;
+    }
+    button {
+      background: #00ffc3;
+      color: #000;
+      font-weight: bold;
+      cursor: pointer;
+      margin-right: 0.5rem;
+    }
+    button:hover {
+      background: #00d6aa;
+    }
+    #historique, #resultats {
+      background-color: #2a2a2a;
+      padding: 1rem;
+      border-radius: 10px;
+      margin-top: 1rem;
+      min-height: 3rem;
+    }
+    .fade {
+      animation: fadeIn 0.5s ease-in-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <h1>🧠 Analyse Navigator</h1>
+
+  <label for="multiplicateur">🎯 Entrer un multiplicateur :</label><br>
+  <input type="number" step="0.01" id="multiplicateur" placeholder="Exemple : 2.34">
+  <br>
+  <button onclick="ajouterMultiplicateur()">Ajouter</button>
+  <button onclick="analyser()">Analyser</button>
+
+  <h3>📊 Historique des multiplicateurs</h3>
+  <div id="historique" class="fade">Aucun multiplicateur encore.</div>
+
+  <h3>📌 Résultats</h3>
+  <div id="resultats" class="fade"></div>
+
+  <script>
+    let multiplicateurs = [];
+
+    function ajouterMultiplicateur() {
+      const input = document.getElementById("multiplicateur");
+      const val = parseFloat(input.value);
+      if (!isNaN(val)) {
+        multiplicateurs.push(val);
+        input.value = "";
+        afficherHistorique();
+        localStorage.setItem("multiplicateurs", JSON.stringify(multiplicateurs));
+      }
+    }
+
+    function analyser() {
+      const log = document.getElementById("resultats");
+      log.innerHTML = "";
+      if (multiplicateurs.length < 5) {
+        log.innerText = "Entrez au moins 5 valeurs pour lancer l'analyse.";
+        return;
+      }
+      const derniers = multiplicateurs.slice(-5);
+      const crashs = derniers.filter(x => x < 1.5).length;
+      const gros = derniers.filter(x => x > 2.0).length;
+
+      let prediction = "Cycle stable";
+      if (crashs >= 3) prediction = "Vol long probable";
+      else if (gros === 5) prediction = "Crash imminent";
+
+      let suggestion = "Miser 1.50x sécurisé";
+      if (prediction === "Vol long probable") suggestion = "Miser 2.00x ou plus";
+      else if (prediction === "Crash imminent") suggestion = "Attendre";
+
+      log.innerHTML = `<strong>Prédiction :</strong> ${prediction}<br><strong>Suggestion :</strong> ${suggestion}`;
+    }
+
+    function afficherHistorique() {
+      const histo = document.getElementById("historique");
+      histo.innerText = multiplicateurs.join(" | ");
+    }
+
+    window.onload = function() {
+      const sauvegarde = localStorage.getItem("multiplicateurs");
+      if (sauvegarde) {
+        multiplicateurs = JSON.parse(sauvegarde);
+        afficherHistorique();
+      }
+    }
+  </script>
+</body>
+</html>
