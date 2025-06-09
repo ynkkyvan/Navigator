@@ -3,165 +3,153 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Navigator Pro</title>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="manifest" href="/manifest.json" />
   <style>
-    body {
-      font-family: 'Roboto', sans-serif;
-      margin: 0;
-      background-color: #0f0f0f;
-      color: #f0f0f0;
-      padding: 20px;
-    }
-    header {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-    .history, .stats, .memo, .export {
-      margin-bottom: 30px;
-      background-color: #1f1f1f;
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 0 15px rgba(255, 255, 255, 0.05);
-    }
-    input, button, textarea {
-      padding: 10px;
-      border-radius: 8px;
-      border: none;
-      font-size: 1rem;
-      margin: 5px 0;
-    }
-    button {
-      background-color: #0070f3;
-      color: white;
-      cursor: pointer;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    th, td {
-      padding: 8px;
-      border-bottom: 1px solid #333;
-      text-align: center;
-    }
-    canvas {
-      max-width: 100%;
-    }
+    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #111; color: #eee; }
+    header { background: #222; padding: 1rem; text-align: center; font-size: 1.5rem; }
+    main { padding: 1rem; max-width: 900px; margin: auto; }
+    textarea, input, button, select { width: 100%; margin-top: 10px; padding: 0.5rem; border-radius: 5px; border: none; }
+    section { margin-top: 2rem; background: #1e1e1e; padding: 1rem; border-radius: 10px; }
+    canvas { background: #fff; margin-top: 1rem; width: 100%; height: 300px; }
+    .flex { display: flex; gap: 1rem; flex-wrap: wrap; }
+    .flex > div { flex: 1; min-width: 200px; }
+    .danger { color: #ff4c4c; font-weight: bold; }
   </style>
 </head>
 <body>
-  <header>
-    <h1>Bienvenue, Yvanou🌝</h1>
-    <p>Ton espace perso Navigator Pro</p>
-  </header>  <section class="history">
-    <h2>Ajouter un multiplicateur</h2>
-    <input id="input" type="number" step="0.01" placeholder="ex: 1.85" />
-    <button onclick="addValue()">Ajouter</button>
-    <ul id="list"></ul>
-  </section>  <section class="stats">
-    <h2>Statistiques</h2>
-    <p>Moyenne : <span id="avg">0</span></p>
-    <p>Max : <span id="max">0</span></p>
-    <p>Min : <span id="min">0</span></p>
-    <p>Taux de signal fort (&lt; 2) : <span id="rate">0</span>%</p>
-    <canvas id="chart" height="100"></canvas>
-  </section>  <section class="memo">
-    <h2>Notes personnelles</h2>
-    <textarea id="note" rows="4" style="width: 100%;"></textarea>
-    <button onclick="saveNote()">Enregistrer la note</button>
-  </section>  <section class="export">
-    <h2>Exporter</h2>
-    <button onclick="exportCSV()">Télécharger l'historique (.csv)</button>
-  </section><audio id="alertSound" src="https://cdn.pixabay.com/audio/2021/08/04/audio_694b3785e8.mp3"></audio>
+  <header>Navigator Pro 🔥</header>
+  <main>
+    <section>
+      <h2>📥 Historique</h2>
+      <textarea id="history" rows="8" placeholder="Colle ici les multiplicateurs, séparés par des espaces"></textarea>
+      <button onclick="analyze()">Analyser</button>
+      <button onclick="saveHistory()">💾 Sauvegarder</button>
+      <button onclick="loadHistory()">📂 Charger</button>
+      <input type="file" id="fileInput" style="display:none" accept=".txt,.csv" />
+      <button onclick="document.getElementById('fileInput').click()">⬆️ Importer un fichier</button>
+    </section><section>
+  <h2>📊 Résultats</h2>
+  <div id="results"></div>
+  <canvas id="chart"></canvas>
+</section>
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>  <script>
-    const list = document.getElementById('list');
-    const avg = document.getElementById('avg');
-    const max = document.getElementById('max');
-    const min = document.getElementById('min');
-    const rate = document.getElementById('rate');
-    const note = document.getElementById('note');
-    const alertSound = document.getElementById('alertSound');
+<section>
+  <h2>🔮 Prédiction Expérimentale</h2>
+  <div id="prediction"></div>
+</section>
+
+<section>
+  <h2>🧪 Simulation de stratégie</h2>
+  <select id="strategy">
+    <option value="flat">Flat Bet</option>
+    <option value="martingale">Martingale</option>
+    <option value="anti">Anti-Martingale</option>
+  </select>
+  <input type="number" id="startBalance" placeholder="Solde initial (ex: 1000)" />
+  <input type="number" id="betAmount" placeholder="Mise de départ (ex: 10)" />
+  <button onclick="simulateStrategy()">Simuler</button>
+  <div id="simulationResult"></div>
+</section>
+
+  </main>  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>  <script>
     const ctx = document.getElementById('chart').getContext('2d');
-
-    let values = JSON.parse(localStorage.getItem('navigatorData')) || [];
-    let userNote = localStorage.getItem('navigatorNote') || '';
-    note.value = userNote;
-
     let chart;
 
-    function saveValues() {
-      localStorage.setItem('navigatorData', JSON.stringify(values));
+    function parseHistory() {
+      const input = document.getElementById('history').value;
+      return input.split(/\s+/).map(x => parseFloat(x)).filter(x => !isNaN(x));
     }
 
-    function renderList() {
-      list.innerHTML = '';
-      values.forEach((val, index) => {
-        const li = document.createElement('li');
-        li.textContent = val;
-        list.appendChild(li);
-      });
-    }
+    function analyze() {
+      const data = parseHistory();
+      if (data.length === 0) return;
 
-    function updateStats() {
-      if (values.length === 0) return;
-      const sum = values.reduce((a, b) => a + b, 0);
-      const average = (sum / values.length).toFixed(2);
-      const maximum = Math.max(...values);
-      const minimum = Math.min(...values);
-      const under2 = values.filter(v => v < 2).length;
-      const signal = ((under2 / values.length) * 100).toFixed(2);
+      const total = data.reduce((a, b) => a + b, 0);
+      const average = (total / data.length).toFixed(2);
+      const min = Math.min(...data);
+      const max = Math.max(...data);
+      const median = data.slice().sort((a,b) => a-b)[Math.floor(data.length/2)];
+      const low = data.filter(x => x < 2).length;
+      const mid = data.filter(x => x >= 2 && x < 5).length;
+      const high = data.filter(x => x >= 5).length;
 
-      avg.textContent = average;
-      max.textContent = maximum;
-      min.textContent = minimum;
-      rate.textContent = signal;
+      let streak = 0, maxStreak = 0;
+      for (let x of data) {
+        if (x < 2) {
+          streak++;
+          if (streak > maxStreak) maxStreak = streak;
+        } else {
+          streak = 0;
+        }
+      }
 
-      if (under2 >= 3) alertSound.play();
+      document.getElementById('results').innerHTML = `
+        Moyenne : ${average}<br>
+        Min : ${min}<br>
+        Max : ${max}<br>
+        Médiane : ${median}<br>
+        Sous 2x : ${low} fois<br>
+        Entre 2x–5x : ${mid} fois<br>
+        Supérieur à 5x : ${high} fois<br>
+        ⛔ Plus grosse série <2x : ${maxStreak} fois d'affilée
+      `;
 
       if (chart) chart.destroy();
       chart = new Chart(ctx, {
         type: 'line',
-        data: {
-          labels: values.map((_, i) => i + 1),
-          datasets: [{
-            label: 'Multiplicateurs',
-            data: values,
-            fill: false,
-            borderColor: '#00ff99',
-            tension: 0.1
-          }]
-        }
+        data: { labels: data.map((_, i) => i+1), datasets: [{ label: 'Multiplicateurs', data, borderColor: '#4bc0c0' }] },
+        options: { responsive: true, scales: { y: { beginAtZero: true } } }
       });
+
+      const avg = parseFloat(average);
+      let status = '🟢 Stable';
+      if (avg < 2) status = '🔴 Risque élevé';
+      else if (avg < 3) status = '🟠 Moyennement stable';
+      document.getElementById('prediction').innerText = `Estimation : ${status}`;
     }
 
-    function addValue() {
-      const input = document.getElementById('input');
-      const val = parseFloat(input.value);
-      if (!isNaN(val)) {
-        values.push(val);
-        input.value = '';
-        saveValues();
-        renderList();
-        updateStats();
-      }
-    }
-
-    function exportCSV() {
-      const csv = values.join(',');
-      const blob = new Blob([csv], { type: 'text/csv' });
-      const url = URL.createObjectURL(blob);
+    function saveHistory() {
+      const blob = new Blob([document.getElementById('history').value], { type: 'text/plain' });
       const a = document.createElement('a');
-      a.href = url;
-      a.download = 'historique_navigator.csv';
+      a.href = URL.createObjectURL(blob);
+      a.download = 'historique_navigator.txt';
       a.click();
     }
 
-    function saveNote() {
-      localStorage.setItem('navigatorNote', note.value);
+    function loadHistory() {
+      document.getElementById('fileInput').click();
     }
 
-    renderList();
-    updateStats();
+    document.getElementById('fileInput').addEventListener('change', function() {
+      const reader = new FileReader();
+      reader.onload = () => { document.getElementById('history').value = reader.result; analyze(); };
+      reader.readAsText(this.files[0]);
+    });
+
+    function simulateStrategy() {
+      const data = parseHistory();
+      const strategy = document.getElementById('strategy').value;
+      let balance = parseFloat(document.getElementById('startBalance').value);
+      let bet = parseFloat(document.getElementById('betAmount').value);
+      if (isNaN(balance) || isNaN(bet)) return;
+
+      let originalBet = bet;
+      let log = [];
+
+      for (let x of data) {
+        if (x >= 2) {
+          balance += bet * (x - 1);
+          if (strategy === 'martingale') bet = originalBet;
+          else if (strategy === 'anti') bet *= 2;
+        } else {
+          balance -= bet;
+          if (strategy === 'martingale') bet *= 2;
+          else if (strategy === 'anti') bet = originalBet;
+        }
+        if (balance <= 0) break;
+      }
+
+      document.getElementById('simulationResult').innerHTML = `Résultat final : ${balance.toFixed(2)} FCFA`;
+    }
   </script></body>
 </html>
